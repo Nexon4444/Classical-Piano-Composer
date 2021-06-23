@@ -1,18 +1,20 @@
 """ This module prepares midi file data and feeds it to the neural
     network for training """
+import collections
 import glob
+import os
 import pickle
 import numpy
 from music21 import converter, instrument, note, chord
-from keras.models import Sequential
-from keras.layers import Dense
-from keras.layers import Dropout
-from keras.layers import LSTM
-from keras.layers import Activation
-from keras.layers import BatchNormalization as BatchNorm
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Dense
+from tensorflow.keras.layers import Dropout
+from tensorflow.keras.layers import LSTM
+from tensorflow.keras.layers import Activation
+from tensorflow.keras.layers import BatchNormalization as BatchNorm
 from keras.utils import np_utils
-from keras.callbacks import ModelCheckpoint
-
+from tensorflow.keras.callbacks import ModelCheckpoint
+EPOCHS = 1
 def train_network():
     """ Train a Neural Network to generate music """
     notes = get_notes()
@@ -29,8 +31,10 @@ def train_network():
 def get_notes():
     """ Get all the notes and chords from the midi files in the ./midi_songs directory """
     notes = []
-
-    for file in glob.glob("midi_songs/*.mid"):
+    # max_i = 1
+    for i, file in enumerate(glob.glob("midi_songs/*.mid")):
+        # if max_i == i:
+        #     break
         midi = converter.parse(file)
 
         print("Parsing %s" % file)
@@ -47,7 +51,8 @@ def get_notes():
             if isinstance(element, note.Note):
                 notes.append(str(element.pitch))
             elif isinstance(element, chord.Chord):
-                notes.append('.'.join(str(n) for n in element.normalOrder))
+                # notes.append('.'.join(str(n) for n in element.normalOrder))
+                notes.append('.'.join(str(n) for n in element.pitches))
 
     with open('data/notes', 'wb') as filepath:
         pickle.dump(notes, filepath)
@@ -58,9 +63,14 @@ def prepare_sequences(notes, n_vocab):
     """ Prepare the sequences used by the Neural Network """
     sequence_length = 100
 
-    # get all pitch names
-    pitchnames = sorted(set(item for item in notes))
 
+    # get all pitch names
+    occurences = collections.defaultdict(int)
+    pitchnames = sorted(set(item for item in notes))
+    for note in notes:
+        occurences[note] += 1
+    with open('data/occurences', 'wb') as filepath:
+        pickle.dump(occurences, filepath)
      # create a dictionary to map pitches to integers
     note_to_int = dict((note, number) for number, note in enumerate(pitchnames))
 
@@ -120,7 +130,7 @@ def train(model, network_input, network_output):
     )
     callbacks_list = [checkpoint]
 
-    model.fit(network_input, network_output, epochs=200, batch_size=128, callbacks=callbacks_list)
-
+    model.fit(network_input, network_output, epochs=EPOCHS, batch_size=128, callbacks=callbacks_list)
+    model.save(os.path.join("cpc.h5"))
 if __name__ == '__main__':
     train_network()

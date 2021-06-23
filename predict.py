@@ -9,6 +9,7 @@ from keras.layers import Dropout
 from keras.layers import LSTM
 from keras.layers import BatchNormalization as BatchNorm
 from keras.layers import Activation
+from keras.models import load_model
 
 def generate():
     """ Generate a piano midi file """
@@ -22,7 +23,9 @@ def generate():
     n_vocab = len(set(notes))
 
     network_input, normalized_input = prepare_sequences(notes, pitchnames, n_vocab)
-    model = create_network(normalized_input, n_vocab)
+    # model = create_network(normalized_input, n_vocab)
+    model = load_model('cpc2.h5')
+
     prediction_output = generate_notes(model, network_input, pitchnames, n_vocab)
     create_midi(prediction_output)
 
@@ -33,12 +36,12 @@ def prepare_sequences(notes, pitchnames, n_vocab):
 
     sequence_length = 100
     network_input = []
-    output = []
+    # output = []
     for i in range(0, len(notes) - sequence_length, 1):
         sequence_in = notes[i:i + sequence_length]
         sequence_out = notes[i + sequence_length]
         network_input.append([note_to_int[char] for char in sequence_in])
-        output.append(note_to_int[sequence_out])
+        # output.append(note_to_int[sequence_out])
 
     n_patterns = len(network_input)
 
@@ -71,16 +74,16 @@ def create_network(network_input, n_vocab):
     model.compile(loss='categorical_crossentropy', optimizer='rmsprop')
 
     # Load the weights to each node
-    model.load_weights('weights.hdf5')
+    model.load_weights('cpc2.h5')
 
     return model
 
 def generate_notes(model, network_input, pitchnames, n_vocab):
     """ Generate notes from the neural network based on a sequence of notes """
     # pick a random sequence from the input as a starting point for the prediction
-    start = numpy.random.randint(0, len(network_input)-1)
+    start = numpy.random.randint(0, len(network_input)-1) #randomowa tablica intów
 
-    int_to_note = dict((number, note) for number, note in enumerate(pitchnames))
+    int_to_note = dict((number, note) for number, note in enumerate(pitchnames)) #int -> nuta dict
 
     pattern = network_input[start]
     prediction_output = []
